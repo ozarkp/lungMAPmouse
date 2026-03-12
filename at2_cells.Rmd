@@ -32,8 +32,8 @@ seurat_obj <- readRDS("./data/LungMAP_Seurat-raw_obj.rds")
 # Explore data
 ```{r, eval=FALSE}
 raw_data <- read_h5ad("./data/LungMAP_MouseLung_CellRef.v1.1.raw.h5ad")
-raw_gene_names <- raw_data$var[['features']]
-head(raw_gene_names,10)
+raw_gene_names <- raw_data$var[["features"]]
+head(raw_gene_names, 10)
 raw_counts <- t(as.matrix(raw_data$X))
 rownames(raw_counts) <- raw_gene_names
 
@@ -53,27 +53,27 @@ length(raw_gene_names)
 
 
 head(seurat_obj@assays[["RNA"]]@features)
-seurat_obj@assays[["RNA"]]@features["Il34",]
+seurat_obj@assays[["RNA"]]@features["Il34", ]
 
 seurat.merged <- seurat_obj
 
 # Save Seurat object
-SaveSeuratRds(object = seurat_obj,file="./data/LungMAP_Seurat-raw_obj.rds")
+SaveSeuratRds(object = seurat_obj, file = "./data/LungMAP_Seurat-raw_obj.rds")
 
-options(repr.plot.width=5, repr.plot.height=5)
+options(repr.plot.width = 5, repr.plot.height = 5)
 ## Analysis of cDNA assay only
 DefaultAssay(seurat.merged) <- "RNA"
 seurat.merged <- NormalizeData(seurat.merged)
 seurat.merged <- FindVariableFeatures(seurat.merged)
 seurat.merged <- ScaleData(seurat.merged)
 seurat.merged <- RunPCA(seurat.merged, npcs = 50)
-seurat.merged <- FindNeighbors(seurat.merged, dims=1:30)
-seurat.merged <- FindClusters(seurat.merged, resolution = 0.1, verbose=TRUE)
-seurat.merged <- RunUMAP(seurat.merged, dims=1:30)
-DimPlot(seurat.merged, label=TRUE, raster=TRUE) + NoLegend()
+seurat.merged <- FindNeighbors(seurat.merged, dims = 1:30)
+seurat.merged <- FindClusters(seurat.merged, resolution = 0.1, verbose = TRUE)
+seurat.merged <- RunUMAP(seurat.merged, dims = 1:30)
+DimPlot(seurat.merged, label = TRUE, raster = TRUE) + NoLegend()
 
 # Save Seurat.merged object to Rds
-SaveSeuratRds(object=seurat.merged,file="./data/LungMAP_Seurat-raw_merged.rds")
+SaveSeuratRds(object = seurat.merged, file = "./data/LungMAP_Seurat-raw_merged.rds")
 
 # Subset Seurat object (merged) for AT2 cells
 seurat_AT2 <- subset(
@@ -86,12 +86,12 @@ at2_pseudo_counts <- AggregateExpression(
   object = seurat_AT2,
   group.by = "orig.ident",
   assays = "RNA",
-  slot = "counts" 
+  slot = "counts"
 )
 at2_matrix <- as.matrix(at2_pseudo_counts$RNA)
 
 # Read in metadata .txt file
-cell_meta <- read.table("data/Cell.Metadata.txt", header=TRUE, sep = "\t") %>% data.frame(stringsAsFactors=FALSE)
+cell_meta <- read.table("data/Cell.Metadata.txt", header = TRUE, sep = "\t") %>% data.frame(stringsAsFactors = FALSE)
 rownames(cell_meta) <- cell_meta$Cell.ID
 
 # # Subset AT2 cell barcodes
@@ -99,7 +99,6 @@ rownames(cell_meta) <- cell_meta$Cell.ID
 #   filter(CellType == "AT2") %>%
 #  pull(Cell.ID) %>% data.frame
 # rownames(at2_cells) <- at2_cells$.
-
 ```
 
 
@@ -114,7 +113,7 @@ head(at2_counts)
 at2_dds <- DESeqDataSetFromMatrix(
   countData = at2_counts,
   colData = deseq_metadata,
-  design = ~ age,
+  design = ~age,
   tidy = FALSE # Would be TRUE if rownames were not already gene names and were instead present as the first column in the counts matrix
 )
 at2_dds
@@ -123,13 +122,13 @@ at2_dds <- DESeq(at2_dds)
 # Save RDS of AT2 DESeq data set
 saveRDS(at2_dds, "./data/AT2_DESeq2-dds.rds")
 
-at2_results <- results(at2_dds, tidy=TRUE)
+at2_results <- results(at2_dds, tidy = TRUE)
 head(at2_results)
 
 summary(at2_results)
 
 # rlog transform the DESeq2 dataset: Remove the dependence of the variance on the mean, particularly the high variance of the logarithm of count data when the mean is low. There will be some elevated standard deviation in the lower count range
-rld_at2<- rlog(at2_dds, blind=FALSE) # blind=FALSE since design specifies 'age' as comparison group
+rld_at2 <- rlog(at2_dds, blind = FALSE) # blind=FALSE since design specifies 'age' as comparison group
 head(assay(rld_at2)) # assay pulls out normalized values
 ```
 
@@ -142,11 +141,11 @@ library("vsn")
 rlog_at2_PCAData <- plotPCA(rld_at2, intgroup = "age", returnData = TRUE)
 
 # Include percent of the variance explained by the top 2 principal components
-percentVar <- round(100 * attr(rlog_at2_PCAData, "percentVar"),2)
+percentVar <- round(100 * attr(rlog_at2_PCAData, "percentVar"), 2)
 
 ggplot(rlog_at2_PCAData, aes(x = PC1, y = PC2, color = group)) +
   geom_point(size = 2) +
-  geom_text(aes(label = name), vjust = 1.5, size = 3, show.legend=FALSE) +
+  geom_text(aes(label = name), vjust = 1.5, size = 3, show.legend = FALSE) +
   labs(
     title = "LungMAP PCA",
     x = paste0("PC1: ", percentVar[1], "%"),
@@ -159,7 +158,7 @@ ggplot(rlog_at2_PCAData, aes(x = PC1, y = PC2, color = group)) +
 ```{r}
 # Overall correlation global gene expression
 rld_at2_matrix <- assay(rld_at2)
-rld_at2_cor <- cor(rld_at2_matrix, method="spearman")
+rld_at2_cor <- cor(rld_at2_matrix, method = "spearman")
 library(pheatmap)
 pheatmap(rld_at2_cor)
 
@@ -201,7 +200,7 @@ for (i in seq_len(n_genes)) {
   }
   # compute Spearman correlation using cor.test
   ct <- suppressWarnings(cor.test(vec[ok], target_vec[ok], method = "spearman", exact = FALSE))
-  results$rho[i] <- unname(ct$estimate)  # Spearman's rho
+  results$rho[i] <- unname(ct$estimate) # Spearman's rho
   results$p.value[i] <- ct$p.value
 }
 
@@ -285,7 +284,6 @@ for (g in genes_to_plot) {
 }
 
 dev.off()
-
 ```
 
 # Cluster AT2 cell rlog(expression) matrix
@@ -294,14 +292,14 @@ dev.off()
 ## - Produces: (1) CSV with gene -> cluster assignment, (2) PDF heatmap with dendrogram(s)
 
 # -------------------- USER OPTIONS --------------------
-expr <- rld_at2_matrix      # <--- set this to your matrix object (genes=rows, samples=cols)
-k <- 11                      # number of gene clusters to cut the gene dendrogram into
+expr <- rld_at2_matrix # <--- set this to your matrix object (genes=rows, samples=cols)
+k <- 11 # number of gene clusters to cut the gene dendrogram into
 linkage_method <- "ward.D2" # "complete", "average", "single", "ward.D2", ...
-distance_metric <- "correlation"  # "euclidean" or "correlation"
-cor_method <- "spearman"           # used only if distance_metric == "correlation": "pearson" or "spearman"
+distance_metric <- "correlation" # "euclidean" or "correlation"
+cor_method <- "spearman" # used only if distance_metric == "correlation": "pearson" or "spearman"
 
-scale_rows <- TRUE          # TRUE = z-score each gene across samples before clustering/plotting, so clustering REFLECTS EXPRESSION PATTERNS ACROSS SAMPLES, NOT EXPRESSION MAGNITUDE
-cluster_samples <- FALSE     # TRUE = also cluster samples (columns) and show sample dendrogram
+scale_rows <- TRUE # TRUE = z-score each gene across samples before clustering/plotting, so clustering REFLECTS EXPRESSION PATTERNS ACROSS SAMPLES, NOT EXPRESSION MAGNITUDE
+cluster_samples <- FALSE # TRUE = also cluster samples (columns) and show sample dendrogram
 
 
 # -------------------- PREP --------------------
@@ -352,22 +350,24 @@ library(pheatmap)
 annotation_row <- data.frame(Cluster = factor(gene_clusters))
 rownames(annotation_row) <- rownames(mat_use)
 
-clrsp <- colorRampPalette(c("blue", "white", "red"))   
-clrs <- clrsp(200) 
+clrsp <- colorRampPalette(c("blue", "white", "red"))
+clrs <- clrsp(200)
 
 pheatmap(
   mat_use,
   cluster_rows = hc_genes,
-  cluster_cols = hc_samples,     # FALSE if cluster_samples == FALSE
-  cutree_rows = k,               # visually separates the k gene clusters
+  cluster_cols = hc_samples, # FALSE if cluster_samples == FALSE
+  cutree_rows = k, # visually separates the k gene clusters
   annotation_row = annotation_row,
   color = clrs,
-  show_rownames = FALSE,         # set TRUE if you have few genes and want names shown
-  main = paste0("Gene hclust (k=", k,
-                ", linkage=", linkage_method,
-                ", dist=", distance_metric,
-                if (distance_metric == "correlation") paste0(" [", cor_method, "]") else "",
-                if (scale_rows) ", row-zscore" else ""),
+  show_rownames = FALSE, # set TRUE if you have few genes and want names shown
+  main = paste0(
+    "Gene hclust (k=", k,
+    ", linkage=", linkage_method,
+    ", dist=", distance_metric,
+    if (distance_metric == "correlation") paste0(" [", cor_method, "]") else "",
+    if (scale_rows) ", row-zscore" else ""
+  ),
   filename = paste0("./plots/AT2_gene_hclust", "_heatmap_k", k, ".pdf"),
   width = 7, height = 9
 )
@@ -375,8 +375,8 @@ pheatmap(
 
 ## Cluster analysis
 ```{r}
-clusters <- read.table("./data/AT2_gene_hclust_clusters_k12.csv",sep=",",header=T)
-cluster_6 <- subset(clusters,cluster==6)
-cluster6_genes <- cluster_6[,1]
-write.table(cluster6_genes,"./data/AT2_cluster6_genes.txt",row.names=F,quote=F,col.names=F)
+clusters <- read.table("./data/AT2_gene_hclust_clusters_k12.csv", sep = ",", header = T)
+cluster_6 <- subset(clusters, cluster == 6)
+cluster6_genes <- cluster_6[, 1]
+write.table(cluster6_genes, "./data/AT2_cluster6_genes.txt", row.names = FALSE, quote = FALSE, col.names = FALSE)
 ```
