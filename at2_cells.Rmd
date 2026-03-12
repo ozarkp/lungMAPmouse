@@ -375,7 +375,7 @@ pheatmap(
 
 ## Cluster analysis
 ```{r}
-clusters <- read.table("./data/AT2_gene_hclust_clusters_k12.csv", sep = ",", header = T)
+clusters <- read.table("./data/AT2_gene_hclust_clusters_k12.csv", sep = ",", header = TRUE)
 cluster_6 <- subset(clusters, cluster == 6)
 cluster6_genes <- cluster_6[, 1]
 write.table(cluster6_genes, "./data/AT2_cluster6_genes.txt", row.names = FALSE, quote = FALSE, col.names = FALSE)
