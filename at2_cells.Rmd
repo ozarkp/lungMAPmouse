@@ -3,16 +3,7 @@ title: "rotation"
 output: html_document
 ---
 ```{r}
-setwd("~/Projects/ZakLab")
-```
-
-# Python pre-processing
-```{python3}
-# import anndata
-# adata = anndata.read_h5ad("./LungMAP_MouseLung_CellRef.v1.1.h5ad")
-# adata.raw.var.rename(columns={"_index": "raw_index"}, inplace=True)
-# adata.var.rename(columns={"_index": "raw_index"}, inplace=True)
-# adata.write_h5ad("LungMAP_MouseLung_CellRef.v1.1.updated.h5ad")
+setwd("~/Projects/macrophage/")
 ```
 
 # Library
@@ -67,7 +58,7 @@ seurat_obj@assays[["RNA"]]@features["Il34",]
 seurat.merged <- seurat_obj
 
 # Save Seurat object
-SaveSeuratRds(object=seurat_obj,file="./data/LungMAP_Seurat-raw_obj.rds")
+SaveSeuratRds(object = seurat_obj,file="./data/LungMAP_Seurat-raw_obj.rds")
 
 options(repr.plot.width=5, repr.plot.height=5)
 ## Analysis of cDNA assay only
@@ -99,21 +90,6 @@ at2_pseudo_counts <- AggregateExpression(
 )
 at2_matrix <- as.matrix(at2_pseudo_counts$RNA)
 
-
-# # Subset Seurat object (merged) for AT1/AT2 cells
-# seurat_AT1AT2 <- subset(
-#   seurat.merged,
-#   subset = celltype_level3_fullname == "AT1/AT2"
-# )
-# 
-# at1at2_pseudo_counts <- AggregateExpression(
-#   object = seurat_AT1AT2,
-#   group.by = "orig.ident",
-#   assays = "RNA",
-#   slot = "counts" 
-# )
-# at1at2_matrix <- as.matrix(at1at2_pseudo_counts$RNA)
-# 
 # Read in metadata .txt file
 cell_meta <- read.table("data/Cell.Metadata.txt", header=TRUE, sep = "\t") %>% data.frame(stringsAsFactors=FALSE)
 rownames(cell_meta) <- cell_meta$Cell.ID
@@ -124,11 +100,6 @@ rownames(cell_meta) <- cell_meta$Cell.ID
 #  pull(Cell.ID) %>% data.frame
 # rownames(at2_cells) <- at2_cells$.
 
-# # Subset AT1/AT2 cell barcodes
-# at1at2_cells <- cell_meta %>%
-#   filter(CellType == "AT1/AT2") %>%
-#   pull(Cell.ID) %>% data.frame
-# rownames(at1at2_cells) <- at1at2_cells$.
 ```
 
 
