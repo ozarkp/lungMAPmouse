@@ -1,0 +1,14 @@
+.DS_Store
+.Rhistory
+.RData
+.RDataTmp
+
+data/LungMAP_MouseLung_CellRef.v1.1.h5ad
+data/LungMAP_MouseLung_CellRef.v1.1.raw.h5ad
+data/LungMAP_MouseLung_CellRef.v1.h5ad
+data/LungMAP_MouseLung_CellRef.v1.1.updated.h5ad
+data/LungMAP_Seurat_merged.rds
+data/LungMAP_Seurat_obj.rds
+data/LungMAP_Seurat-raw_obj.rds
+data/LungMAP_Seurat-raw_merged.rds
+
