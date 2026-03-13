@@ -7,7 +7,7 @@ output: pdf_document
 
 ### Set working direcotry
 ```{r Working directory}
-setwd("~/Projects/macrophage/")
+setwd("~/Projects/lungMAPmouse/")
 ```
 
 # Library
