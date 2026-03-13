@@ -30,7 +30,7 @@ seurat.merged <- readRDS("./data/LungMAP_Seurat-raw_merged.rds")
 seurat_obj <- readRDS("./data/LungMAP_Seurat-raw_obj.rds")
 
 # RData image
-load("./data/at2_cells.RData")
+load("./at2_cells.RData")
 ```
 
 
