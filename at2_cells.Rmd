@@ -5,7 +5,7 @@ output:
   html_document: default
 ---
 ### Set working direcotry
-```{r working directory}
+```{r Working directory}
 setwd("~/Projects/macrophage/")
 ```
 
@@ -25,9 +25,12 @@ library(ggcorrplot)
 
 # Load data
 ```{r Load data}
-# Ensure 'raw' is present within file name. If it is not, normalized data is present
+# Raw data
 seurat.merged <- readRDS("./data/LungMAP_Seurat-raw_merged.rds")
 seurat_obj <- readRDS("./data/LungMAP_Seurat-raw_obj.rds")
+
+# RData image
+load("./data/at2_cells.RData")
 ```
 
 
@@ -84,7 +87,7 @@ SaveSeuratRds(object = seurat.merged, file = "./data/LungMAP_Seurat-raw_merged.r
 ```
 
 # Get AT2 cells from Seurat object
-```{r Subset AT2 cells}
+```{r Subset AT2 cells, eval = FALSE}
 # Subset Seurat object (merged) for AT2 cells
 seurat_AT2 <- subset(
   seurat_obj,
@@ -110,7 +113,6 @@ rownames(cell_meta) <- cell_meta$Cell.ID
 #  pull(Cell.ID) %>% data.frame
 # rownames(at2_cells) <- at2_cells$.
 ```
-
 
 # DESeq2
 ```{r DESeq2 on AT2 cells, eval = FALSE}
@@ -140,7 +142,7 @@ summary(at2_results)
 ```
 
 # rlog-normalize AT2 cell expression counts
-```{r rlog-normalization of DEseq2 counts}
+```{r rlog-normalization of DEseq2 counts, eval = FALSE}
 at2_dds <- readRDS("./data/AT2_DESeq2-dds.rds")
 # rlog transform the DESeq2 dataset: Remove the dependence of the variance on the mean, particularly the high variance of the logarithm of count data when the mean is low. There will be some elevated standard deviation in the lower count range
 rld_at2 <- rlog(at2_dds, blind = FALSE) # blind=FALSE since design specifies 'age' as comparison group
@@ -149,9 +151,10 @@ head(assay(rld_at2)) # assay pulls out normalized values
 
 # SD and PCA
 ```{r AT2 cells PCA}
+# Mean standard deviation plot
 meanSdPlot(assay(rld_at2))
 
-# PCA using rlog-transformed data
+# PCA plot
 rlog_at2_PCAData <- plotPCA(rld_at2, intgroup = "age", returnData = TRUE)
 
 # Include percent of the variance explained by the top 2 principal components
@@ -169,12 +172,14 @@ ggplot(rlog_at2_PCAData, aes(x = PC1, y = PC2, color = group)) +
 ```
 
 # AT2 cells Correlation (Spearman) calculation by timepoint (8 'samples')
-```{r AT2 cells correlation}
+```{r AT2 cells correlation for all genes, eval = TRUE}
 # Overall correlation global gene expression
 rld_at2_matrix <- assay(rld_at2)
 rld_at2_cor <- cor(rld_at2_matrix, method = "spearman")
 pheatmap(rld_at2_cor)
+```
 
+```{r AT2 cell gene expression correlation with IL34, eval = FALSE}
 # rlog expression matrix for AT2 cells
 expr <- rld_at2_matrix
 
@@ -219,11 +224,11 @@ for (i in seq_len(n_genes)) {
 results <- results[order(-results$rho), ]
 
 # Save to CSV
-# write.csv(results, "./data/AT2_Il34_spearman_by_gene.csv", row.names = FALSE)
+write.csv(results, "./data/AT2_Il34_spearman_by_gene.csv", row.names = FALSE)
 ```
 
-## AT2 cells Il34 scatterplots vs every other gene (Spearman + best fit line)
-```{r AT2 cell scatter plots}
+## AT2 cells IL34 scatterplots vs every other gene (Spearman + best fit line)
+```{r AT2 cell scatter plots, eval = FALSE}
 expr <- rld_at2_matrix
 # Sample names
 sample_names <- colnames(expr)
@@ -354,7 +359,6 @@ if (cluster_samples) {
 }
 
 # -------------------- HEATMAP WITH DENDROGRAM --------------------
-library(pheatmap)
 annotation_row <- data.frame(Cluster = factor(gene_clusters))
 rownames(annotation_row) <- rownames(mat_use)
 
