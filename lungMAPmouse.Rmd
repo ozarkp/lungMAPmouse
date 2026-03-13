@@ -1,9 +1,10 @@
 ---
-title: "AT2 cells"
-output:
-  pdf_document: default
-  html_document: default
+title: "LungMAP Mouse LMEX0000004397"
+subtitle: "https://www.lungmap.net/dataset/?dataset_id=LMEX0000004397&view=downloads"
+author: "Patrick Ozark"
+output: pdf_document
 ---
+
 ### Set working direcotry
 ```{r Working directory}
 setwd("~/Projects/macrophage/")
@@ -25,6 +26,8 @@ library(ggcorrplot)
 
 # Load data
 ```{r Load data}
+# Avoid significant memory usage regenerating the data loaded here
+# Loaded data is generated within this script on initial pass-through
 load("./lungMAPmouse.RData")
 ```
 
