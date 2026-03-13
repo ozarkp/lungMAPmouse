@@ -5,7 +5,7 @@ date: "2026-03-05"
 ---
 
 # Python pre-processing
-```{python}
+```{python, eval = FALSE}
 # import anndata
 # adata = anndata.read_h5ad("./LungMAP_MouseLung_CellRef.v1.1.h5ad")
 # adata.raw.var.rename(columns={"_index": "raw_index"}, inplace=True)
@@ -13,7 +13,7 @@ date: "2026-03-05"
 # adata.write_h5ad("LungMAP_MouseLung_CellRef.v1.1.updated.h5ad")
 ```
 
-```{python}
+```{python, eval = FALSE}
 # import pandas as pd
 # >>> import scipy.sparse as sp
 # >>> input_file = ">>> inpu>>>> input_file = "./LungM>>> input_file = "./Lun>>> input_file = "./L>>> in>>> in>>> input_file = "./LungMAP_MouseLung_CellRef.>>> input_file = "./LungMAP_MouseLung_CellRef.v1.1.updated.h5ad"
