@@ -25,12 +25,7 @@ library(ggcorrplot)
 
 # Load data
 ```{r Load data}
-# Raw data
-seurat.merged <- readRDS("./data/LungMAP_Seurat-raw_merged.rds")
-seurat_obj <- readRDS("./data/LungMAP_Seurat-raw_obj.rds")
-
-# RData image
-load("./at2_cells.RData")
+load("./macrophage.RData")
 ```
 
 
@@ -119,6 +114,7 @@ rownames(cell_meta) <- cell_meta$Cell.ID
 # Read in metadata needed for DESeq2
 deseq_metadata <- read.csv("./data/LungMAP-deseq2-metadata.csv")
 deseq_metadata
+
 at2_counts <- at2_matrix
 head(at2_counts)
 
@@ -129,7 +125,6 @@ at2_dds <- DESeqDataSetFromMatrix(
   design = ~age,
   tidy = FALSE # Would be TRUE if rownames were not already gene names and were instead present as the first column in the counts matrix
 )
-at2_dds
 
 at2_dds <- DESeq(at2_dds)
 # Save RDS of AT2 DESeq data set
