@@ -1,6 +1,6 @@
 .DS_Store
 .Rhistory
-.RData
+.RData*
 .RDataTmp
 .Rproj.user
 lungMAPmouse.RData
