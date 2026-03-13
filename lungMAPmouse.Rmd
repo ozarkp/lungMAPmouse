@@ -389,4 +389,16 @@ clusters <- read.table("./data/AT2_gene_hclust_clusters_k12.csv", sep = ",", hea
 cluster_6 <- subset(clusters, cluster == 6)
 cluster6_genes <- cluster_6[, 1]
 write.table(cluster6_genes, "./data/AT2_cluster6_genes.txt", row.names = FALSE, quote = FALSE, col.names = FALSE)
+
+# Subset rld_at2_matrix to cluster 6 genes only
+cluster6_genes <- as.character(cluster_6$gene)
+cluster6_matrix <- rld_at2_matrix[cluster6_genes, ,drop = FALSE]
+cluster6_gsea_m <- as.data.frame(cluster6_matrix)
+cluster6_gsea_m["description"] <- as.character("na")
+cluster6_gsea_m["name"] <- row.names(cluster6_gsea_m)
+new_order_pos <- c(10,9,1:8)
+cluster6_gsea_m <- cluster6_gsea_m[,new_order_pos]
+
+write.table(cluster6_gsea_m, "./data/gsea_at2_cluster6_rlogGeneCounts.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
+
 ```
