@@ -1,18 +1,21 @@
 ---
 title: "rotation"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
-```{r}
+### Set working direcotry
+```{r working directory}
 setwd("~/Projects/macrophage/")
 ```
 
 # Library
-```{r, quiet=TRUE, echo=FALSE}
+```{r Library, message = FALSE}
 library(anndataR)
 library(Seurat)
 library(Matrix)
 library(dplyr)
-
+library(vsn)
 library(DESeq2)
 library(ggplot2)
 library(reshape2)
@@ -21,16 +24,15 @@ library(ggcorrplot)
 ```
 
 # Load data
-```{r}
-# These data were generated in the 'Explor data' section
+```{r Load data}
 # Ensure 'raw' is present within file name. If it is not, normalized data is present
 seurat.merged <- readRDS("./data/LungMAP_Seurat-raw_merged.rds")
 seurat_obj <- readRDS("./data/LungMAP_Seurat-raw_obj.rds")
 ```
 
 
-# Explore data
-```{r, eval=FALSE}
+# Create Seurat object using raw counts
+```{r Seurat object, eval = FALSE}
 raw_data <- read_h5ad("./data/LungMAP_MouseLung_CellRef.v1.1.raw.h5ad")
 raw_gene_names <- raw_data$var[["features"]]
 head(raw_gene_names, 10)
@@ -38,7 +40,6 @@ raw_counts <- t(as.matrix(raw_data$X))
 rownames(raw_counts) <- raw_gene_names
 
 
-# Create Seurat object
 seurat_obj <- CreateSeuratObject(
   counts = raw_counts,
   meta.data = as.data.frame(raw_data$obs),
@@ -55,14 +56,18 @@ length(raw_gene_names)
 head(seurat_obj@assays[["RNA"]]@features)
 seurat_obj@assays[["RNA"]]@features["Il34", ]
 
-seurat.merged <- seurat_obj
 
 # Save Seurat object
 SaveSeuratRds(object = seurat_obj, file = "./data/LungMAP_Seurat-raw_obj.rds")
+```
 
-options(repr.plot.width = 5, repr.plot.height = 5)
+# Normalize and scale data, PCA, UMAP for Seurat object 
+```{r Operations on Seurat object, eval = FALSE}
+seurat.merged <- seurat_obj
+
 ## Analysis of cDNA assay only
 DefaultAssay(seurat.merged) <- "RNA"
+
 seurat.merged <- NormalizeData(seurat.merged)
 seurat.merged <- FindVariableFeatures(seurat.merged)
 seurat.merged <- ScaleData(seurat.merged)
@@ -70,11 +75,16 @@ seurat.merged <- RunPCA(seurat.merged, npcs = 50)
 seurat.merged <- FindNeighbors(seurat.merged, dims = 1:30)
 seurat.merged <- FindClusters(seurat.merged, resolution = 0.1, verbose = TRUE)
 seurat.merged <- RunUMAP(seurat.merged, dims = 1:30)
+
+options(repr.plot.width = 5, repr.plot.height = 5)
 DimPlot(seurat.merged, label = TRUE, raster = TRUE) + NoLegend()
 
 # Save Seurat.merged object to Rds
 SaveSeuratRds(object = seurat.merged, file = "./data/LungMAP_Seurat-raw_merged.rds")
+```
 
+# Get AT2 cells from Seurat object
+```{r Subset AT2 cells}
 # Subset Seurat object (merged) for AT2 cells
 seurat_AT2 <- subset(
   seurat_obj,
@@ -103,7 +113,8 @@ rownames(cell_meta) <- cell_meta$Cell.ID
 
 
 # DESeq2
-```{r}
+```{r DESeq2 on AT2 cells, eval = FALSE}
+# Read in metadata needed for DESeq2
 deseq_metadata <- read.csv("./data/LungMAP-deseq2-metadata.csv")
 deseq_metadata
 at2_counts <- at2_matrix
@@ -126,16 +137,19 @@ at2_results <- results(at2_dds, tidy = TRUE)
 head(at2_results)
 
 summary(at2_results)
+```
 
+# rlog-normalize AT2 cell expression counts
+```{r rlog-normalization of DEseq2 counts}
+at2_dds <- readRDS("./data/AT2_DESeq2-dds.rds")
 # rlog transform the DESeq2 dataset: Remove the dependence of the variance on the mean, particularly the high variance of the logarithm of count data when the mean is low. There will be some elevated standard deviation in the lower count range
 rld_at2 <- rlog(at2_dds, blind = FALSE) # blind=FALSE since design specifies 'age' as comparison group
 head(assay(rld_at2)) # assay pulls out normalized values
 ```
 
-# PCA
-```{r}
-library("vsn")
-# meanSdPlot(assay(rld_at2))
+# SD and PCA
+```{r AT2 cells PCA}
+meanSdPlot(assay(rld_at2))
 
 # PCA using rlog-transformed data
 rlog_at2_PCAData <- plotPCA(rld_at2, intgroup = "age", returnData = TRUE)
@@ -155,15 +169,11 @@ ggplot(rlog_at2_PCAData, aes(x = PC1, y = PC2, color = group)) +
 ```
 
 # AT2 cells Correlation (Spearman) calculation by timepoint (8 'samples')
-```{r}
+```{r AT2 cells correlation}
 # Overall correlation global gene expression
 rld_at2_matrix <- assay(rld_at2)
 rld_at2_cor <- cor(rld_at2_matrix, method = "spearman")
-library(pheatmap)
 pheatmap(rld_at2_cor)
-
-
-# Correlation with Il34 expression by timepoint
 
 # rlog expression matrix for AT2 cells
 expr <- rld_at2_matrix
@@ -204,7 +214,7 @@ for (i in seq_len(n_genes)) {
   results$p.value[i] <- ct$p.value
 }
 
-# Post-process: remove rows with NA rho (if you want(ptional), and sort by rho descending
+# Post-process: remove rows with NA rho (if you want(optional), and sort by rho descending
 # results <- results[!is.na(results$rho), ]
 results <- results[order(-results$rho), ]
 
@@ -213,7 +223,7 @@ results <- results[order(-results$rho), ]
 ```
 
 ## AT2 cells Il34 scatterplots vs every other gene (Spearman + best fit line)
-```{r}
+```{r AT2 cell scatter plots}
 expr <- rld_at2_matrix
 # Sample names
 sample_names <- colnames(expr)
@@ -279,15 +289,13 @@ for (g in genes_to_plot) {
       )
     ) +
     theme_bw()
-
-  print(p)
 }
 
 dev.off()
 ```
 
 # Cluster AT2 cell rlog(expression) matrix
-```{r}
+```{r Cluster AT2 cells, eval = FALSE}
 ## Hierarchical clustering of genes (rows) in a genes x samples matrix
 ## - Produces: (1) CSV with gene -> cluster assignment, (2) PDF heatmap with dendrogram(s)
 
@@ -374,7 +382,7 @@ pheatmap(
 ```
 
 ## Cluster analysis
-```{r}
+```{r AT2 cell cluster analysis, eval = FALSE}
 clusters <- read.table("./data/AT2_gene_hclust_clusters_k12.csv", sep = ",", header = TRUE)
 cluster_6 <- subset(clusters, cluster == 6)
 cluster6_genes <- cluster_6[, 1]
