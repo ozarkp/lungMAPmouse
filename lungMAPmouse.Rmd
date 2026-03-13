@@ -25,7 +25,7 @@ library(ggcorrplot)
 
 # Load data
 ```{r Load data}
-load("./macrophage.RData")
+load("./lungMAPmouse.RData")
 ```
 
 
