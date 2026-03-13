@@ -10,7 +10,7 @@ setwd("~/Projects/macrophage/")
 ```
 
 # Library
-```{r Library, message = FALSE}
+```{r Library, message = FALSE, quiet = TRUE}
 library(anndataR)
 library(Seurat)
 library(Matrix)

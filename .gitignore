@@ -2,6 +2,7 @@
 .Rhistory
 .RData
 .RDataTmp
+at2_cells.RData
 
 data/LungMAP_MouseLung_CellRef.v1.1.h5ad
 data/LungMAP_MouseLung_CellRef.v1.1.raw.h5ad
