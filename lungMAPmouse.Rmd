@@ -92,7 +92,7 @@ seurat_AT2 <- subset(
   subset = celltype_level3_fullname == "Alveolar type 2 cell"
 )
 
-# AT2 Pseudobulk counts
+# AT2 Pseudobulk counts by timepoint (orig.ident)
 at2_pseudo_counts <- AggregateExpression(
   object = seurat_AT2,
   group.by = "orig.ident",
@@ -100,6 +100,15 @@ at2_pseudo_counts <- AggregateExpression(
   slot = "counts"
 )
 at2_matrix <- as.matrix(at2_pseudo_counts$RNA)
+
+# AT2 Pseudobulk counts by sample (DataID)
+at2_pseudo_counts_s <- AggregateExpression(
+  object = seurat_AT2,
+  group.by = "DataID",
+  assays = "RNA",
+  slot = "counts"
+)
+at2_m_s <- as.matrix(at2_pseudo_counts_s$RNA)
 
 # Read in metadata .txt file
 cell_meta <- read.table("data/Cell.Metadata.txt", header = TRUE, sep = "\t") %>% data.frame(stringsAsFactors = FALSE)
@@ -486,13 +495,33 @@ write.csv(as.data.frame(go_cc), "./data/AT2_cluster6_GO_CC_results.csv", row.nam
 
 # Plot top GO terms
 # pdf("./plots/AT2_cluster6_GO_BP_dotplot.pdf", width = 10, height = 8)
-dotplot(go_bp, showCategory = 20) +
+dotplot(go_bp, showCategory = 15) +
   ggtitle("Cluster 6: Top GO Biological Process Terms")
 # dev.off()
 
 # pdf("./plots/AT2_cluster6_GO_BP_barplot.pdf", width = 10, height = 8)
-barplot(go_bp, showCategory = 20) +
+barplot(go_bp, showCategory = 15) +
   ggtitle("Cluster 6: Top GO Biological Process Terms")
+# dev.off()
+
+# pdf("./plots/AT2_cluster6_GO_MF_dotplot.pdf", width = 10, height = 8)
+dotplot(go_mf, showCategory = 15) +
+  ggtitle("Cluster 6: Top GO Molecular Function Terms")
+# dev.off()
+
+# pdf("./plots/AT2_cluster6_GO_MF_barplot.pdf", width = 10, height = 8)
+barplot(go_mf, showCategory = 15) +
+  ggtitle("Cluster 6: Top GO Molecular Function Terms")
+# dev.off()
+
+# pdf("./plots/AT2_cluster6_GO_CC_dotplot.pdf", width = 10, height = 8)
+dotplot(go_cc, showCategory = 15) +
+  ggtitle("Cluster 6: Top GO Cellular Component Terms")
+# dev.off()
+
+# pdf("./plots/AT2_cluster6_GO_CC_barplot.pdf", width = 10, height = 8)
+barplot(go_cc, showCategory = 15) +
+  ggtitle("Cluster 6: Top GO Cellular Component Terms")
 # dev.off()
 ```
 
