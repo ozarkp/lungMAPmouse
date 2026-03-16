@@ -25,7 +25,7 @@ library(ggcorrplot)
 ```
 
 # Load data
-```{r Load data}
+```{r Load data, eval = TRUE}
 # Avoid significant memory usage regenerating the data loaded here
 # Loaded data is generated within this script on initial pass-through
 load("./lungMAPmouse.RData")
@@ -85,7 +85,7 @@ SaveSeuratRds(object = seurat.merged, file = "./data/LungMAP_Seurat-raw_merged.r
 ```
 
 # Get AT2 cells from Seurat object
-```{r Subset AT2 cells, eval = FALSE}
+```{r Subset AT2 cells, eval = TRUE}
 # Subset Seurat object (merged) for AT2 cells
 seurat_AT2 <- subset(
   seurat_obj,
@@ -157,7 +157,7 @@ head(assay(rld_at2)) # assay pulls out normalized values
 ```
 
 # SD and PCA
-```{r AT2 cells PCA}
+```{r AT2 cells PCA, eval = TRUE}
 # Mean standard deviation plot
 meanSdPlot(assay(rld_at2))
 
@@ -301,8 +301,53 @@ for (g in genes_to_plot) {
       )
     ) +
     theme_bw()
+  print(p)
 }
 
+dev.off()
+```
+
+```{r GSEA on top correlated genes with IL34, eval = TRUE}
+library(clusterProfiler)
+library(org.Mm.eg.db)
+# If you have a ranked list of genes (e.g., from differential expression),
+# create a ranked gene list from correlation results
+# using the Spearman correlation with Il34 from earlier analysis
+
+# Read the correlation results
+il34_cor_results <- read.csv("./data/AT2_Il34_spearman_by_gene.csv",
+  stringsAsFactors = FALSE
+)
+
+# Create ranked list for GSEA
+ranked_genes <- il34_cor_results %>%
+  dplyr::select(gene, rho) %>%
+  na.omit() %>%
+  arrange(desc(rho))
+
+# Convert to named vector for GSEA
+ranked_vector <- setNames(ranked_genes$rho, ranked_genes$gene)
+
+# Run GSEA with GO terms
+gsea_result <- gseGO(
+  geneList = ranked_vector,
+  OrgDb = org.Mm.eg.db,
+  ont = "BP",
+  keyType = "SYMBOL",
+  pvalueCutoff = 0.05,
+  pAdjustMethod = "BH"
+)
+
+# Plot GSEA results
+pdf("./plots/AT2_Il34_GSEA_dotplot.pdf", width = 10, height = 8)
+dotplot(gsea_result, showCategory = 15) +
+  ggtitle("GSEA: Gene Sets Correlated with Il34 Expression")
+dev.off()
+
+# Ridge plot for enriched pathways
+pdf("./plots/AT2_Il34_GSEA_ridgeplot.pdf", width = 10, height = 8)
+ridgeplot(gsea_result, showCategory = 15) +
+  ggtitle("GSEA Ridge Plot: Il34-Correlated Pathways")
 dev.off()
 ```
 
@@ -412,7 +457,7 @@ cluster6_gsea_m <- cluster6_gsea_m[, new_order_pos]
 # write.table(cluster6_gsea_m, "./data/gsea_at2_cluster6_rlogGeneCounts.txt", sep = "\t", row.names = FALSE, col.names = TRUE, quote = FALSE)
 ```
 
-```{r Cluster heatmap}
+```{r Cluster heatmap, eval = TRUE}
 library(ComplexHeatmap)
 library(circlize)
 
@@ -432,7 +477,7 @@ ComplexHeatmap::Heatmap(
   col = heat_colors,
   show_row_names = FALSE,
   show_column_names = TRUE,
-  column_title = "Cluster 6 Genes Across Samples",
+  column_title = "Cluster 6 Genes Across Timepoints",
   row_title = paste0("Genes (n=", nrow(cluster6_scaled), ")"),
   clustering_distance_rows = "spearman",
   clustering_method_rows = "ward.D2",
@@ -440,7 +485,7 @@ ComplexHeatmap::Heatmap(
 )
 ```
 
-```{r Cluster GO Enrichment analysis}
+```{r Cluster GO Enrichment analysis, eval = TRUE}
 library(clusterProfiler)
 library(org.Mm.eg.db) # Mouse gene annotations
 
@@ -494,38 +539,38 @@ write.csv(as.data.frame(go_mf), "./data/AT2_cluster6_GO_MF_results.csv", row.nam
 write.csv(as.data.frame(go_cc), "./data/AT2_cluster6_GO_CC_results.csv", row.names = FALSE)
 
 # Plot top GO terms
-# pdf("./plots/AT2_cluster6_GO_BP_dotplot.pdf", width = 10, height = 8)
+pdf("./plots/AT2_cluster6_GO_BP_dotplot.pdf", width = 10, height = 8)
 dotplot(go_bp, showCategory = 15) +
   ggtitle("Cluster 6: Top GO Biological Process Terms")
-# dev.off()
+dev.off()
 
-# pdf("./plots/AT2_cluster6_GO_BP_barplot.pdf", width = 10, height = 8)
+pdf("./plots/AT2_cluster6_GO_BP_barplot.pdf", width = 10, height = 8)
 barplot(go_bp, showCategory = 15) +
   ggtitle("Cluster 6: Top GO Biological Process Terms")
-# dev.off()
+dev.off()
 
-# pdf("./plots/AT2_cluster6_GO_MF_dotplot.pdf", width = 10, height = 8)
+pdf("./plots/AT2_cluster6_GO_MF_dotplot.pdf", width = 10, height = 8)
 dotplot(go_mf, showCategory = 15) +
   ggtitle("Cluster 6: Top GO Molecular Function Terms")
-# dev.off()
+dev.off()
 
-# pdf("./plots/AT2_cluster6_GO_MF_barplot.pdf", width = 10, height = 8)
+pdf("./plots/AT2_cluster6_GO_MF_barplot.pdf", width = 10, height = 8)
 barplot(go_mf, showCategory = 15) +
   ggtitle("Cluster 6: Top GO Molecular Function Terms")
-# dev.off()
+dev.off()
 
-# pdf("./plots/AT2_cluster6_GO_CC_dotplot.pdf", width = 10, height = 8)
+pdf("./plots/AT2_cluster6_GO_CC_dotplot.pdf", width = 10, height = 8)
 dotplot(go_cc, showCategory = 15) +
   ggtitle("Cluster 6: Top GO Cellular Component Terms")
-# dev.off()
+dev.off()
 
-# pdf("./plots/AT2_cluster6_GO_CC_barplot.pdf", width = 10, height = 8)
+pdf("./plots/AT2_cluster6_GO_CC_barplot.pdf", width = 10, height = 8)
 barplot(go_cc, showCategory = 15) +
   ggtitle("Cluster 6: Top GO Cellular Component Terms")
-# dev.off()
+dev.off()
 ```
 
-```{r Cluster KEGG pathway enrichment}
+```{r Cluster KEGG pathway enrichment, eval = TRUE}
 # KEGG pathway enrichment
 kegg_enrich <- enrichKEGG(
   gene = cluster6_entrez$ENTREZID,
@@ -545,10 +590,10 @@ write.csv(as.data.frame(kegg_enrich), "./data/AT2_cluster6_KEGG_results.csv", ro
 
 # Plot KEGG pathways
 if (nrow(as.data.frame(kegg_enrich)) > 0) {
-  # pdf("./plots/AT2_cluster6_KEGG_dotplot.pdf", width = 10, height = 8)
+  pdf("./plots/AT2_cluster6_KEGG_dotplot.pdf", width = 10, height = 8)
   dotplot(kegg_enrich, showCategory = 15) +
     ggtitle("Cluster 6: KEGG Pathway Enrichment")
-  # dev.off()
+  dev.off()
 }
 
 # Visualize specific pathway (example: if enriched)
@@ -572,49 +617,8 @@ if (nrow(as.data.frame(kegg_enrich)) > 0) {
 # )
 ```
 
-```{r GSEA on cluster}
-# If you have a ranked list of genes (e.g., from differential expression),
-# create a ranked gene list from correlation results
-# using the Spearman correlation with Il34 from earlier analysis
 
-# Read the correlation results
-il34_cor_results <- read.csv("./data/AT2_Il34_spearman_by_gene.csv",
-  stringsAsFactors = FALSE
-)
-
-# Create ranked list for GSEA
-ranked_genes <- il34_cor_results %>%
-  dplyr::select(gene, rho) %>%
-  na.omit() %>%
-  arrange(desc(rho))
-
-# Convert to named vector for GSEA
-ranked_vector <- setNames(ranked_genes$rho, ranked_genes$gene)
-
-# Run GSEA with GO terms
-gsea_result <- gseGO(
-  geneList = ranked_vector,
-  OrgDb = org.Mm.eg.db,
-  ont = "BP",
-  keyType = "SYMBOL",
-  pvalueCutoff = 0.05,
-  pAdjustMethod = "BH"
-)
-
-# Plot GSEA results
-# pdf("./plots/AT2_Il34_GSEA_dotplot.pdf", width = 10, height = 8)
-dotplot(gsea_result, showCategory = 15) +
-  ggtitle("GSEA: Gene Sets Correlated with Il34 Expression")
-# dev.off()
-
-# Ridge plot for enriched pathways
-# pdf("./plots/AT2_Il34_GSEA_ridgeplot.pdf", width = 10, height = 8)
-ridgeplot(gsea_result, showCategory = 15) +
-  ggtitle("GSEA Ridge Plot: Il34-Correlated Pathways")
-# dev.off()
-```
-
-```{r Cluster gene correlation network analysis}
+```{r Cluster gene correlation network analysis, eval = TRUE}
 # Build gene-gene correlation network for cluster 6 genes
 cor_matrix <- cor(t(cluster6_matrix), method = "spearman")
 
@@ -630,7 +634,7 @@ cor_matrix_filtered[abs(cor_matrix_filtered) < threshold] <- 0
 adj_matrix <- abs(cor_matrix_filtered)
 
 # Plot correlation heatmap
-# pdf("./plots/AT2_cluster6_gene_correlation_heatmap.pdf", width = 12, height = 12)
+pdf("./plots/AT2_cluster6_gene_correlation_heatmap.pdf", width = 12, height = 12)
 pheatmap(
   cor_matrix[1:min(50, nrow(cor_matrix)), 1:min(50, ncol(cor_matrix))],
   color = colorRampPalette(c("blue", "white", "red"))(100),
@@ -638,10 +642,10 @@ pheatmap(
   cluster_cols = TRUE,
   main = "Cluster 6 Gene-Gene Correlation Matrix (Top 50 Genes)"
 )
-# dev.off()
+dev.off()
 ```
 
-```{r Cluster PCA}
+```{r Cluster PCA, eval = TRUE}
 # PCA on cluster 6 genes
 pca_result <- prcomp(t(cluster6_matrix), center = TRUE, scale. = TRUE)
 
@@ -657,7 +661,7 @@ pca_df <- data.frame(
 )
 
 # Plot PCA
-# pdf("./plots/AT2_cluster6_PCA.pdf", width = 8, height = 6)
+pdf("./plots/AT2_cluster6_PCA.pdf", width = 8, height = 6)
 ggplot(pca_df, aes(x = PC1, y = PC2, color = Age)) +
   geom_point(size = 4) +
   geom_text(aes(label = Sample), vjust = -1, size = 3) +
@@ -668,7 +672,7 @@ ggplot(pca_df, aes(x = PC1, y = PC2, color = Age)) +
   ) +
   scale_color_manual(values = c("P7" = "#4DAF4A", "P14" = "#377EB8", "P21" = "#E41A1C")) +
   theme_bw()
-# dev.off()
+dev.off()
 
 # Loadings plot (top contributing genes)
 loadings_df <- data.frame(
