@@ -85,7 +85,7 @@ SaveSeuratRds(object = seurat.merged, file = "./data/LungMAP_Seurat-raw_merged.r
 ```
 
 # Get AT2 cells from Seurat object
-```{r Subset AT2 cells, eval = TRUE}
+```{r Subset AT2 cells, eval = FALSE}
 # Subset Seurat object (merged) for AT2 cells
 seurat_AT2 <- subset(
   seurat_obj,
@@ -486,9 +486,6 @@ ComplexHeatmap::Heatmap(
 ```
 
 ```{r Cluster GO Enrichment analysis, eval = TRUE}
-library(clusterProfiler)
-library(org.Mm.eg.db) # Mouse gene annotations
-
 # Convert gene symbols to Entrez IDs for cluster 6
 cluster6_entrez <- bitr(
   cluster6_genes,
@@ -636,7 +633,7 @@ adj_matrix <- abs(cor_matrix_filtered)
 # Plot correlation heatmap
 pdf("./plots/AT2_cluster6_gene_correlation_heatmap.pdf", width = 12, height = 12)
 pheatmap(
-  cor_matrix[1:min(50, nrow(cor_matrix)), 1:min(50, ncol(cor_matrix))],
+  cor_matrix[seq_len(min(50, nrow(cor_matrix))), seq_len(min(50, ncol(cor_matrix)))],
   color = colorRampPalette(c("blue", "white", "red"))(100),
   cluster_rows = TRUE,
   cluster_cols = TRUE,
