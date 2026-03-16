@@ -85,7 +85,7 @@ SaveSeuratRds(object = seurat.merged, file = "./data/LungMAP_Seurat-raw_merged.r
 ```
 
 # Get AT2 cells from Seurat object
-```{r Subset AT2 cells, eval = FALSE}
+```{r Subset AT2 cells, eval = TRUE}
 # Subset Seurat object (merged) for AT2 cells
 seurat_AT2 <- subset(
   seurat_obj,
@@ -99,7 +99,7 @@ at2_pseudo_counts <- AggregateExpression(
   assays = "RNA",
   slot = "counts"
 )
-at2_matrix <- as.matrix(at2_pseudo_counts$RNA)
+at2_matrix_timepoint <- as.matrix(at2_pseudo_counts$RNA)
 
 # AT2 Pseudobulk counts by sample (DataID)
 at2_pseudo_counts_s <- AggregateExpression(
@@ -114,26 +114,20 @@ at2_m_s <- as.matrix(at2_pseudo_counts_s$RNA)
 cell_meta <- read.table("data/Cell.Metadata.txt", header = TRUE, sep = "\t") %>% data.frame(stringsAsFactors = FALSE)
 rownames(cell_meta) <- cell_meta$Cell.ID
 
-# # Subset AT2 cell barcodes
-# at2_cells <- cell_meta %>%
-#   filter(CellType == "AT2") %>%
-#  pull(Cell.ID) %>% data.frame
-# rownames(at2_cells) <- at2_cells$.
 ```
 
 # DESeq2
 ```{r DESeq2 on AT2 cells, eval = FALSE}
 # Read in metadata needed for DESeq2
-deseq_metadata <- read.csv("./data/LungMAP-deseq2-metadata.csv")
-deseq_metadata
+deseq_metadata_timepoint <- read.csv("./data/LungMAP-deseq2-metadata_timepoint.csv")
 
-at2_counts <- at2_matrix
+at2_counts <- at2_matrix_timepoint
 head(at2_counts)
 
 # Construct DESeq2 dataset object
 at2_dds <- DESeqDataSetFromMatrix(
   countData = at2_counts,
-  colData = deseq_metadata,
+  colData = deseq_metadata_timepoint,
   design = ~age,
   tidy = FALSE # Would be TRUE if rownames were not already gene names and were instead present as the first column in the counts matrix
 )
