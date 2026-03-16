@@ -1,0 +1,286 @@
+---
+title: "LungMAP Mouse LMEX0000004397 Sample-level Analysis"
+subtitle: "https://www.lungmap.net/dataset/?dataset_id=LMEX0000004397&view=downloads"
+author: "Patrick Ozark"
+output: pdf_document
+---
+
+### Set working direcotry
+```{r Working directory}
+setwd("~/Projects/lungMAPmouse/")
+```
+
+# Library
+```{r Library, message = FALSE, quiet = TRUE}
+library(Seurat)
+library(Matrix)
+library(dplyr)
+library(vsn)
+library(DESeq2)
+library(ggplot2)
+library(reshape2)
+library(pheatmap)
+library(ggcorrplot)
+```
+
+# Load data
+```{r Load data, eval = TRUE}
+# Avoid significant memory usage regenerating the data loaded here
+# Loaded data is generated within this script on initial pass-through
+load("./lungMAPmouse.RData")
+```
+
+# Get AT2 cells from Seurat object
+```{r Subset AT2 cells, eval = TRUE}
+# Subset Seurat object (merged) for AT2 cells
+seurat_AT2 <- subset(
+  seurat_obj,
+  subset = celltype_level3_fullname == "Alveolar type 2 cell"
+)
+
+# AT2 Pseudobulk counts by sample (DataID)
+at2_pseudo_counts_s <- AggregateExpression(
+  object = seurat_AT2,
+  group.by = c("orig.ident","DataID"),
+  assays = "RNA",
+  slot = "counts"
+)
+at2_m_s <- as.matrix(at2_pseudo_counts_s$RNA)
+
+# Read in metadata .txt file
+cell_meta <- read.table("data/Cell.Metadata.txt", header = TRUE, sep = "\t") %>% data.frame(stringsAsFactors = FALSE)
+rownames(cell_meta) <- cell_meta$Cell.ID
+
+```
+
+# DESeq2
+```{r DESeq2 on AT2 cells, eval = TRUE}
+# Read in metadata needed for DESeq2
+deseq_metadata_sample <- read.csv("./data/LungMAP-deseq2-metadata_sample.csv")
+
+at2_counts <- at2_m_s
+head(at2_counts)
+
+# Construct DESeq2 dataset object
+at2_dds <- DESeqDataSetFromMatrix(
+  countData = at2_counts,
+  colData = deseq_metadata_sample,
+  design = ~age,
+  tidy = FALSE # Would be TRUE if rownames were not already gene names and were instead present as the first column in the counts matrix
+)
+
+at2_dds <- DESeq(at2_dds)
+# Save RDS of AT2 DESeq data set
+saveRDS(at2_dds, "./data/AT2_DESeq2-dds_sample.rds")
+
+at2_results <- results(at2_dds, tidy = TRUE)
+head(at2_results)
+
+summary(at2_results)
+```
+
+# rlog-normalize AT2 cell expression counts
+```{r rlog-normalization of DEseq2 counts, eval = TRUE}
+at2_dds_s <- readRDS("./data/AT2_DESeq2-dds_sample.rds")
+# rlog transform the DESeq2 dataset: Remove the dependence of the variance on the mean, particularly the high variance of the logarithm of count data when the mean is low. There will be some elevated standard deviation in the lower count range
+rld_at2_s <- rlog(at2_dds_s, blind = FALSE) # blind=FALSE since design specifies 'age' as comparison group
+head(assay(rld_at2_s)) # assay pulls out normalized values
+```
+
+# SD and PCA
+```{r AT2 cells PCA, eval = TRUE}
+# Mean standard deviation plot
+meanSdPlot(assay(rld_at2_s))
+
+# PCA plot
+rlog_at2_s_PCAData <- plotPCA(rld_at2_s, intgroup = "age", returnData = TRUE)
+
+# Include percent of the variance explained by the top 2 principal components
+percentVar <- round(100 * attr(rlog_at2_s_PCAData, "percentVar"), 2)
+
+pdf("./plots/AT2_samples_PCA.pdf", width = 8, height = 6)
+ggplot(rlog_at2_s_PCAData, aes(x = PC1, y = PC2, color = group)) +
+  geom_point(size = 2) +
+  geom_text(aes(label = name), vjust = 1.5, size = 3, show.legend = FALSE) +
+  labs(
+    title = "LungMAP Samples PCA",
+    x = paste0("PC1: ", percentVar[1], "%"),
+    y = paste0("PC2: ", percentVar[2], "%")
+  ) +
+  theme_bw()
+dev.off()
+```
+
+# AT2 cells Correlation (Spearman) calculation by sample (16 samples)
+```{r AT2 cells correlation for all genes, eval = TRUE}
+# Overall correlation global gene expression
+rld_at2_m_s <- assay(rld_at2_s)
+rld_at2_cor_s <- cor(rld_at2_m_s, method = "spearman")
+pheatmap(rld_at2_cor_s)
+```
+
+```{r AT2 cell gene expression correlation with IL34, eval = TRUE}
+# rlog expression matrix for AT2 cells and samples
+expr <- rld_at2_m_s
+
+target_gene <- "Il34"
+
+# Extract target vector (as numeric)
+target_vec <- as.numeric(expr[target_gene, ])
+n_samples <- length(target_vec)
+
+# Prepare output storage
+genes <- rownames(expr)
+n_genes <- length(genes)
+results <- data.frame(gene = genes, rho = NA_real_, p.value = NA_real_, stringsAsFactors = FALSE)
+
+
+# Loop through genes and compute Spearman correlation with Il34
+for (i in seq_len(n_genes)) {
+  g <- genes[i]
+  # skip if same gene
+  if (g == target_gene) {
+    results$rho[i] <- 1
+    results$p.value[i] <- 0
+    next
+  }
+  # get numeric vector for gene g
+  vec <- as.numeric(expr[g, ])
+  # Check for enough non-NA pairs
+  ok <- complete.cases(vec, target_vec)
+  if (sum(ok) < 3) { # too few data points to compute correlation reliably
+    results$rho[i] <- NA
+    results$p.value[i] <- NA
+    next
+  }
+  # compute Spearman correlation using cor.test
+  ct <- suppressWarnings(cor.test(vec[ok], target_vec[ok], method = "spearman", exact = FALSE))
+  results$rho[i] <- unname(ct$estimate) # Spearman's rho
+  results$p.value[i] <- ct$p.value
+}
+
+# Post-process: remove rows with NA rho (if you want(optional), and sort by rho descending
+# results <- results[!is.na(results$rho), ]
+results <- results[order(-results$rho), ]
+
+# Save to CSV
+write.csv(results, "./data/AT2_samples_Il34_spearman_by_gene.csv", row.names = FALSE)
+```
+
+## AT2 cells IL34 scatterplots vs every other gene (Spearman + best fit line) by sample
+```{r AT2 cell scatter plots, eval = TRUE}
+expr <- rld_at2_m_s
+# Sample names
+sample_names <- colnames(expr)
+if (is.null(sample_names) || any(sample_names == "")) {
+  sample_names <- paste0("Sample", seq_len(ncol(expr)))
+}
+
+# Output folder
+plot_dir <- "./plots"
+pdf_file <- file.path(plot_dir, "AT2_samples_Il34_vs_all_genes_spearman_scatter.pdf")
+
+# Genes to plot: all except Il34, and drop genes with NA rho from your results table
+genes_to_plot <- results$gene[results$gene != target_gene]
+genes_to_plot <- genes_to_plot[!is.na(results$rho[match(genes_to_plot, results$gene)])]
+
+# Limit number of plots
+max_plots <- 1000
+genes_to_plot <- head(genes_to_plot, max_plots)
+
+# Create a single multi-page PDF
+pdf(pdf_file, width = 6, height = 5, onefile = TRUE)
+
+for (g in genes_to_plot) {
+  x <- as.numeric(expr[g, ])
+  y <- target_vec
+
+  df <- data.frame(
+    sample = sample_names,
+    other_gene = x,
+    Il34 = y,
+    stringsAsFactors = FALSE
+  )
+  df <- df[complete.cases(df$other_gene, df$Il34), , drop = FALSE]
+
+  # Spearman correlation (for annotation)
+  ct <- suppressWarnings(cor.test(df$other_gene, df$Il34, method = "spearman", exact = FALSE))
+  rho <- unname(ct$estimate)
+  pval <- ct$p.value
+
+  # Linear model for the plotted best-fit line + r^2
+  fit <- tryCatch(lm(Il34 ~ other_gene, data = df), error = function(e) NULL)
+  r2 <- if (!is.null(fit)) summary(fit)$r.squared else NA_real_
+
+  # Format stats
+  rho_txt <- sprintf("%.3f", rho)
+  p_txt <- format.pval(pval, digits = 3, eps = 1e-300)
+  r2_txt <- if (is.na(r2)) "NA" else sprintf("%.3f", r2)
+
+  # Scatter + best-fit line + Spearman + r^2
+  p <- ggplot(df, aes(x = other_gene, y = Il34)) +
+    geom_point(size = 2) +
+    geom_smooth(method = "lm", se = FALSE) +
+    # Label points (8 samples):
+    geom_text(aes(label = sample), vjust = -0.7, size = 3) +
+    labs(
+      title = paste0("Il34 vs ", g),
+      x = paste0(g, " (rlog expression)"),
+      y = "Il34 (rlog expression)",
+      subtitle = paste0(
+        "Spearman rho = ", rho_txt,
+        ", p = ", p_txt,
+        " | r^2 ", r2_txt
+      )
+    ) +
+    theme_bw()
+  print(p)
+}
+
+dev.off()
+```
+
+```{r GSEA on top correlated genes with IL34, eval = TRUE}
+library(clusterProfiler)
+library(org.Mm.eg.db)
+# If you have a ranked list of genes (e.g., from differential expression),
+# create a ranked gene list from correlation results
+# using the Spearman correlation with Il34 from earlier analysis
+
+# Read the correlation results
+il34_cor_results <- read.csv("./data/AT2_samples_Il34_spearman_by_gene.csv",
+  stringsAsFactors = FALSE
+)
+
+# Create ranked list for GSEA
+ranked_genes <- il34_cor_results %>%
+  dplyr::select(gene, rho) %>%
+  na.omit() %>%
+  arrange(desc(rho))
+
+# Convert to named vector for GSEA
+ranked_vector <- setNames(ranked_genes$rho, ranked_genes$gene)
+
+# Run GSEA with GO terms for genes correlated with IL34 expression
+gsea_result <- gseGO(
+  geneList = ranked_vector,
+  OrgDb = org.Mm.eg.db,
+  ont = "BP",
+  keyType = "SYMBOL",
+  pvalueCutoff = 0.05,
+  pAdjustMethod = "BH",
+  eps = 0 # Don't estimate p-value for higher accuracy
+)
+
+# Plot GSEA results
+pdf("./plots/AT2_samples_Il34_GSEA_dotplot.pdf", width = 10, height = 8)
+dotplot(gsea_result, showCategory = 15) + # Use orderBy to control ordering by gene ratio or p value
+  ggtitle("GSEA: Gene Sets Correlated with Il34 Expression")
+dev.off()
+
+# Ridge plot for enriched pathways
+pdf("./plots/AT2_samples_Il34_GSEA_ridgeplot.pdf", width = 10, height = 8)
+ridgeplot(gsea_result, showCategory = 15) +
+  ggtitle("GSEA Ridge Plot: Il34-Correlated Pathways")
+dev.off()
+```
