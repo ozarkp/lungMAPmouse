@@ -284,3 +284,111 @@ ridgeplot(gsea_result, showCategory = 15) +
   ggtitle("GSEA Ridge Plot: Il34-Correlated Pathways")
 dev.off()
 ```
+
+# Plots of IL34 expression for each sample across timepoints
+```{r }
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(readr)
+library(tibble)
+
+corr <- read_csv("./data/AT2_samples_Il34_spearman_by_gene.csv")
+
+# Remove rows with NA correlations
+corr <- corr %>%
+  filter(!if_any(everything(), is.na))
+
+# Extract gene list
+genes_to_plot <- corr$gene
+
+# Keep only genes present in expression matrix
+genes_to_plot <- intersect(genes_to_plot, rownames(rld_at2_m_s))
+
+
+# Convert to long format for plotting
+expr_long <- rld_at2_m_s[genes_to_plot, ] %>%
+  as.data.frame() %>%
+  rownames_to_column("gene") %>%
+  pivot_longer(
+    -gene,
+    names_to = "DataID",
+    values_to = "expression"
+  )
+
+
+# Get meta data and match the DataID (sample names) with their timepoint (orig.ident)
+meta <- seurat_obj@meta.data %>%
+  dplyr::select(DataID, orig.ident) %>%
+  distinct()
+
+# Format sample names obtained from seurat object to enable joining of the meta and long-format expression data
+meta$DataID <- str_replace_all(meta$DataID, "_", "-")
+
+# Left join to retain all data points from long-format expression data
+expr_long <- expr_long %>%
+  left_join(meta, by = "DataID")
+
+
+# Order timepoints
+expr_long$orig.ident <- factor(
+  expr_long$orig.ident,
+  levels = sort(unique(expr_long$orig.ident))
+)
+
+
+# -----------------------------
+# 5. Compute mean + sd
+# -----------------------------
+summary_df <- expr_long %>%
+  group_by(gene, orig.ident) %>%
+  summarize(
+    mean = mean(expression),
+    sd = sd(expression),
+    .groups = "drop"
+  )
+
+# -----------------------------
+# 6. Plot
+# -----------------------------
+
+# Ensure timepoints are ordered
+expr_long$orig.ident <- factor(expr_long$orig.ident,
+                        levels = unique(expr_long$orig.ident))
+
+# Set number of plots
+max_plots <- Inf
+genes_to_plot <- head(ranked_genes, max_plots)$gene # Careful with genes_to_plot, it is a variable whose value is changed more than once depending on context
+
+pdf("./plots/AT2_sample-expr_across-timepoints_all-genes.pdf", width = 6, height = 5)
+# for (g in unique(expr_long$gene)) {
+for (g in genes_to_plot) {
+  plot_df <- expr_long %>% filter(gene == g)
+  plot_summary_df <- summary_df %>% filter(gene == g)
+
+  p <- ggplot(plot_df, aes(x = orig.ident, y = expression)) +
+    geom_point(size = 1,color = "blue") +
+    labs(
+      title = g,
+      x = "Timepoint",
+      y = "rlog(pseudobulk expression)"
+    ) +
+    theme_bw() +
+    
+    geom_errorbar(data = plot_summary_df, aes(x = orig.ident, 
+                                              ymin = mean - sd, 
+                                              ymax = mean + sd),
+                  inherit.aes = FALSE,
+                  width = 0.15,
+                  linewidth = 0.20) +
+    geom_line(data = plot_summary_df, aes(y = mean,
+                                   group = gene),
+              linewidth = 0.20)
+  
+
+print(p)
+}
+
+dev.off()
+
+```
