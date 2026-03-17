@@ -240,6 +240,7 @@ for (g in genes_to_plot) {
 dev.off()
 ```
 
+## GSEA on top correlated genes with IL34 expression in AT2 cells
 ```{r GSEA on top correlated genes with IL34, eval = TRUE}
 library(clusterProfiler)
 library(org.Mm.eg.db)
@@ -337,9 +338,7 @@ expr_long$orig.ident <- factor(
 )
 
 
-# -----------------------------
-# 5. Compute mean + sd
-# -----------------------------
+# Calculate mean and sd
 summary_df <- expr_long %>%
   group_by(gene, orig.ident) %>%
   summarize(
@@ -348,17 +347,13 @@ summary_df <- expr_long %>%
     .groups = "drop"
   )
 
-# -----------------------------
-# 6. Plot
-# -----------------------------
-
 # Ensure timepoints are ordered
 expr_long$orig.ident <- factor(expr_long$orig.ident,
                         levels = unique(expr_long$orig.ident))
 
 # Set number of plots
 max_plots <- Inf
-genes_to_plot <- head(ranked_genes, max_plots)$gene # Careful with genes_to_plot, it is a variable whose value is changed more than once depending on context
+genes_to_plot <- head(ranked_genes, max_plots)$gene # Careful with genes_to_plot, it is a variable whose value is changed more than once depending on analysis context
 
 pdf("./plots/AT2_sample-expr_across-timepoints_all-genes.pdf", width = 6, height = 5)
 # for (g in unique(expr_long$gene)) {
@@ -391,4 +386,114 @@ print(p)
 
 dev.off()
 
+```
+
+# Cluster AT2 cell rlog(expression) matrix
+```{r Cluster AT2 cells, eval = FALSE}
+## Hierarchical clustering of genes (rows) in a genes x samples matrix
+## - Produces: (1) CSV with gene -> cluster assignment, (2) PDF heatmap with dendrogram(s)
+
+# Options
+expr <- rld_at2_m_s # <--- set this to your matrix object (genes=rows, samples=cols)
+k <- 12 # number of gene clusters to cut the gene dendrogram into
+linkage_method <- "ward.D2" # "complete", "average", "single", "ward.D2", ...
+distance_metric <- "euclidean" # "euclidean" or "correlation"
+cor_method <- "spearman" # used only if distance_metric == "correlation": "pearson" or "spearman"
+
+scale_rows <- TRUE # TRUE = z-score each gene across samples before clustering/plotting, so clustering REFLECTS EXPRESSION PATTERNS ACROSS SAMPLES, NOT EXPRESSION MAGNITUDE
+cluster_samples <- FALSE # TRUE = also cluster samples (columns) and show sample dendrogram
+
+
+# Prep data
+mat <- as.matrix(expr)
+stopifnot(!is.null(rownames(mat)), !is.null(colnames(mat)))
+
+# Optional: row-scale (z-score) genes across samples
+mat_use <- if (scale_rows) t(scale(t(mat))) else mat
+
+# Drop genes with zero/undefined variance (helps correlation + scaling behave)
+gene_sd <- apply(mat_use, 1, sd, na.rm = TRUE)
+keep <- is.finite(gene_sd) & gene_sd > 0
+mat_use <- mat_use[keep, , drop = FALSE]
+
+if (k > nrow(mat_use)) stop("k is larger than the number of genes after filtering.")
+
+# Cluster genes
+if (distance_metric == "euclidean") {
+  d_genes <- dist(mat_use, method = "euclidean")
+} else if (distance_metric == "correlation") {
+  cor_genes <- cor(t(mat_use), method = cor_method, use = "pairwise.complete.obs")
+  d_genes <- as.dist(1 - cor_genes)
+} else {
+  stop("distance_metric must be 'euclidean' or 'correlation'.")
+}
+
+hc_genes <- hclust(d_genes, method = linkage_method)
+gene_clusters <- cutree(hc_genes, k = k)
+
+# Save gene cluster assignments
+cluster_df <- data.frame(gene = rownames(mat_use), cluster = gene_clusters)
+write.csv(cluster_df, paste0("./data/AT2-samples_gene_hclust", "_clusters_k", k,"_dist-", distance_metric, ".csv"), row.names = FALSE)
+
+# Sample clustering (If specified in options)
+hc_samples <- FALSE
+if (cluster_samples) {
+  if (distance_metric == "euclidean") {
+    d_samples <- dist(t(mat_use), method = "euclidean")
+  } else {
+    cor_samples <- cor(mat_use, method = cor_method, use = "pairwise.complete.obs")
+    d_samples <- as.dist(1 - cor_samples)
+  }
+  hc_samples <- hclust(d_samples, method = linkage_method)
+}
+
+# Heatmap + dendrogram
+annotation_row <- data.frame(Cluster = factor(gene_clusters))
+rownames(annotation_row) <- rownames(mat_use)
+
+# Order clusters by the order in which they appear in the dendrogram to aid in visual interpretation
+row_order <- hc_genes$order
+ordered_genes <- rownames(mat_use)[row_order]
+clusters_in_order <- gene_clusters[ordered_genes]
+
+# Keep only first occurrence of each cluster
+cluster_levels_ordered <- unique(clusters_in_order)
+
+# Reorder the cluster
+annotation_row$Cluster <- factor(
+  gene_clusters,
+  levels = cluster_levels_ordered
+)
+
+# Make gene cluster named by gene IDs
+names(gene_clusters) <- rownames(mat_use)
+
+# Set scale colors
+clrsp <- colorRampPalette(c("blue", "white", "red"))
+clrs <- clrsp(200)
+
+# Custom scale
+breaks <- seq(-2, 2, length.out = 201)
+
+outfile <- paste0("./plots/AT2-samples_gene_hclust", "_heatmap_k", k, "_dist-", distance_metric, ".pdf")
+pdf(outfile, width = 7, height = 9)
+pheatmap(
+  mat_use,
+  cluster_rows = hc_genes,
+  cluster_cols = hc_samples, # FALSE if cluster_samples == FALSE
+  cutree_rows = k, # visually separates the k gene clusters
+  annotation_row = annotation_row,
+  # annotation_colors = annotation_colors,
+  color = clrs,
+  breaks = breaks,
+  show_rownames = FALSE, # set TRUE if you have few genes and want names shown
+  main = paste0(
+    "Gene hclust (k=", k,
+    ", linkage=", linkage_method,
+    ", dist=", distance_metric,
+    if (distance_metric == "correlation") paste0(" [", cor_method, "]") else "",
+    if (scale_rows) ", row-zscore" else ""
+  )
+)
+dev.off()
 ```

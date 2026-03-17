@@ -345,23 +345,23 @@ ridgeplot(gsea_result, showCategory = 15) +
 dev.off()
 ```
 
-# Cluster AT2 cell rlog(expression) matrix
+# Cluster AT2 cell rlog(expression) matrix using timepoints
 ```{r Cluster AT2 cells, eval = FALSE}
 ## Hierarchical clustering of genes (rows) in a genes x samples matrix
 ## - Produces: (1) CSV with gene -> cluster assignment, (2) PDF heatmap with dendrogram(s)
 
-# -------------------- USER OPTIONS --------------------
+# Options
 expr <- rld_at2_matrix # <--- set this to your matrix object (genes=rows, samples=cols)
-k <- 11 # number of gene clusters to cut the gene dendrogram into
+k <- 15 # number of gene clusters to cut the gene dendrogram into
 linkage_method <- "ward.D2" # "complete", "average", "single", "ward.D2", ...
-distance_metric <- "correlation" # "euclidean" or "correlation"
+distance_metric <- "euclidean" # "euclidean" or "correlation"
 cor_method <- "spearman" # used only if distance_metric == "correlation": "pearson" or "spearman"
 
 scale_rows <- TRUE # TRUE = z-score each gene across samples before clustering/plotting, so clustering REFLECTS EXPRESSION PATTERNS ACROSS SAMPLES, NOT EXPRESSION MAGNITUDE
 cluster_samples <- FALSE # TRUE = also cluster samples (columns) and show sample dendrogram
 
 
-# -------------------- PREP --------------------
+# Prep data
 mat <- as.matrix(expr)
 stopifnot(!is.null(rownames(mat)), !is.null(colnames(mat)))
 
@@ -375,7 +375,7 @@ mat_use <- mat_use[keep, , drop = FALSE]
 
 if (k > nrow(mat_use)) stop("k is larger than the number of genes after filtering.")
 
-# -------------------- GENE CLUSTERING --------------------
+# Cluster genes
 if (distance_metric == "euclidean") {
   d_genes <- dist(mat_use, method = "euclidean")
 } else if (distance_metric == "correlation") {
@@ -390,9 +390,9 @@ gene_clusters <- cutree(hc_genes, k = k)
 
 # Save gene cluster assignments
 cluster_df <- data.frame(gene = rownames(mat_use), cluster = gene_clusters)
-write.csv(cluster_df, paste0("./data/AT2_gene_hclust", "_clusters_k", k, ".csv"), row.names = FALSE)
+write.csv(cluster_df, paste0("./data/AT2_gene_hclust", "_clusters_k", k, "_dist-", distance_metric, ".csv"), row.names = FALSE)
 
-# -------------------- (OPTIONAL) SAMPLE CLUSTERING --------------------
+# Sample clustering (If specified in options)
 hc_samples <- FALSE
 if (cluster_samples) {
   if (distance_metric == "euclidean") {
@@ -404,13 +404,36 @@ if (cluster_samples) {
   hc_samples <- hclust(d_samples, method = linkage_method)
 }
 
-# -------------------- HEATMAP WITH DENDROGRAM --------------------
+# Heatmap + dendrogram
 annotation_row <- data.frame(Cluster = factor(gene_clusters))
 rownames(annotation_row) <- rownames(mat_use)
 
+# Order clusters by the order in which they appear in the dendrogram to aid in visual interpretation
+row_order <- hc_genes$order
+ordered_genes <- rownames(mat_use)[row_order]
+clusters_in_order <- gene_clusters[ordered_genes]
+
+# Keep only first occurrence of each cluster
+cluster_levels_ordered <- unique(clusters_in_order)
+
+# Reorder the cluster
+annotation_row$Cluster <- factor(
+  gene_clusters,
+  levels = cluster_levels_ordered
+)
+
+# Make gene cluster named by gene IDs
+names(gene_clusters) <- rownames(mat_use)
+
+# Set scale colors
 clrsp <- colorRampPalette(c("blue", "white", "red"))
 clrs <- clrsp(200)
 
+# Custom scale
+breaks <- seq(-2, 2, length.out = 201)
+
+outfile <- paste0("./plots/AT2_gene_hclust", "_heatmap_k", k, "_dist-", distance_metric, ".pdf")
+pdf(outfile, width = 7, height = 9)
 pheatmap(
   mat_use,
   cluster_rows = hc_genes,
@@ -418,6 +441,7 @@ pheatmap(
   cutree_rows = k, # visually separates the k gene clusters
   annotation_row = annotation_row,
   color = clrs,
+  breaks = breaks,
   show_rownames = FALSE, # set TRUE if you have few genes and want names shown
   main = paste0(
     "Gene hclust (k=", k,
@@ -425,10 +449,9 @@ pheatmap(
     ", dist=", distance_metric,
     if (distance_metric == "correlation") paste0(" [", cor_method, "]") else "",
     if (scale_rows) ", row-zscore" else ""
-  ),
-  filename = paste0("./plots/AT2_gene_hclust", "_heatmap_k", k, ".pdf"),
-  width = 7, height = 9
+  )
 )
+dev.off()
 ```
 
 ## Cluster analysis
