@@ -101,15 +101,6 @@ at2_pseudo_counts <- AggregateExpression(
 )
 at2_matrix_timepoint <- as.matrix(at2_pseudo_counts$RNA)
 
-# AT2 Pseudobulk counts by sample (DataID)
-at2_pseudo_counts_s <- AggregateExpression(
-  object = seurat_AT2,
-  group.by = "DataID",
-  assays = "RNA",
-  slot = "counts"
-)
-at2_m_s <- as.matrix(at2_pseudo_counts_s$RNA)
-
 # Read in metadata .txt file
 cell_meta <- read.table("data/Cell.Metadata.txt", header = TRUE, sep = "\t") %>% data.frame(stringsAsFactors = FALSE)
 rownames(cell_meta) <- cell_meta$Cell.ID
@@ -121,12 +112,12 @@ rownames(cell_meta) <- cell_meta$Cell.ID
 # Read in metadata needed for DESeq2
 deseq_metadata_timepoint <- read.csv("./data/LungMAP-deseq2-metadata_timepoint.csv")
 
-at2_counts <- at2_matrix_timepoint
-head(at2_counts)
+at2_counts_t <- at2_matrix_timepoint
+head(at2_counts_t)
 
 # Construct DESeq2 dataset object
 at2_dds <- DESeqDataSetFromMatrix(
-  countData = at2_counts,
+  countData = at2_counts_t,
   colData = deseq_metadata_timepoint,
   design = ~age,
   tidy = FALSE # Would be TRUE if rownames were not already gene names and were instead present as the first column in the counts matrix
@@ -136,10 +127,10 @@ at2_dds <- DESeq(at2_dds)
 # Save RDS of AT2 DESeq data set
 saveRDS(at2_dds, "./data/AT2_DESeq2-dds.rds")
 
-at2_results <- results(at2_dds, tidy = TRUE)
-head(at2_results)
+at2_results_t <- results(at2_dds, tidy = TRUE)
+head(at2_results_t)
 
-summary(at2_results)
+summary(at2_results_t)
 ```
 
 # rlog-normalize AT2 cell expression counts

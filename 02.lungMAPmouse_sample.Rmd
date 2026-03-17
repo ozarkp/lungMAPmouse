@@ -48,7 +48,10 @@ at2_pseudo_counts_s <- AggregateExpression(
 at2_m_s <- as.matrix(at2_pseudo_counts_s$RNA)
 
 # Read in metadata .txt file
-cell_meta <- read.table("data/Cell.Metadata.txt", header = TRUE, sep = "\t") %>% data.frame(stringsAsFactors = FALSE)
+cell_meta <- read.table("data/Cell.Metadata.txt",
+                        header = TRUE, sep = "\t") %>%
+  data.frame(stringsAsFactors = FALSE)
+
 rownames(cell_meta) <- cell_meta$Cell.ID
 
 ```
@@ -58,25 +61,27 @@ rownames(cell_meta) <- cell_meta$Cell.ID
 # Read in metadata needed for DESeq2
 deseq_metadata_sample <- read.csv("./data/LungMAP-deseq2-metadata_sample.csv")
 
-at2_counts <- at2_m_s
-head(at2_counts)
+at2_counts_s <- at2_m_s
+head(at2_counts_s)
 
 # Construct DESeq2 dataset object
 at2_dds <- DESeqDataSetFromMatrix(
-  countData = at2_counts,
+  countData = at2_counts_s,
   colData = deseq_metadata_sample,
   design = ~age,
-  tidy = FALSE # Would be TRUE if rownames were not already gene names and were instead present as the first column in the counts matrix
+  tidy = FALSE # Would be TRUE if rownames
+  # were not already gene names and were instead
+  # present as the first column in the counts matrix
 )
 
 at2_dds <- DESeq(at2_dds)
 # Save RDS of AT2 DESeq data set
 saveRDS(at2_dds, "./data/AT2_DESeq2-dds_sample.rds")
 
-at2_results <- results(at2_dds, tidy = TRUE)
-head(at2_results)
+at2_results_s <- results(at2_dds, tidy = TRUE)
+head(at2_results_s)
 
-summary(at2_results)
+summary(at2_results_s)
 ```
 
 # rlog-normalize AT2 cell expression counts
@@ -394,7 +399,7 @@ dev.off()
 ## - Produces: (1) CSV with gene -> cluster assignment, (2) PDF heatmap with dendrogram(s)
 
 # Options
-expr <- rld_at2_m_s # <--- set this to your matrix object (genes=rows, samples=cols)
+expr <- rld_at2_m_s
 k <- 12 # number of gene clusters to cut the gene dendrogram into
 linkage_method <- "ward.D2" # "complete", "average", "single", "ward.D2", ...
 distance_metric <- "euclidean" # "euclidean" or "correlation"
