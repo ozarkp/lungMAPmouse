@@ -399,10 +399,10 @@ dev.off()
 ## - Produces: (1) CSV with gene -> cluster assignment, (2) PDF heatmap with dendrogram(s)
 
 # Options
-expr <- rld_at2_m_s
+expr <- rld_at2_m_s # rlog expression matrix of Genes x Samples
 k <- 12 # number of gene clusters to cut the gene dendrogram into
 linkage_method <- "ward.D2" # "complete", "average", "single", "ward.D2", ...
-distance_metric <- "euclidean" # "euclidean" or "correlation"
+distance_metric <- "correlation" # "euclidean" or "correlation"
 cor_method <- "spearman" # used only if distance_metric == "correlation": "pearson" or "spearman"
 
 scale_rows <- TRUE # TRUE = z-score each gene across samples before clustering/plotting, so clustering REFLECTS EXPRESSION PATTERNS ACROSS SAMPLES, NOT EXPRESSION MAGNITUDE
