@@ -400,7 +400,7 @@ dev.off()
 
 # Options
 expr <- rld_at2_m_s # rlog expression matrix of Genes x Samples
-k <- 12 # number of gene clusters to cut the gene dendrogram into
+k <- 20 # number of gene clusters to cut the gene dendrogram into
 linkage_method <- "ward.D2" # "complete", "average", "single", "ward.D2", ...
 distance_metric <- "correlation" # "euclidean" or "correlation"
 cor_method <- "spearman" # used only if distance_metric == "correlation": "pearson" or "spearman"
